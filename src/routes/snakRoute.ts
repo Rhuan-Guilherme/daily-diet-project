@@ -16,6 +16,20 @@ export async function snakRoute(app: FastifyInstance) {
 
     const {user_id, name, description, diet_notdiet} = schemaBody.parse(body)
 
+
+      let session_id;
+      const session = await knex('user').select('session_id').where('id', user_id)
+      if(session[0].session_id === null){
+        await knex('user').update({
+          session_id: randomUUID()
+        }).where('id', user_id)
+      } else {
+        session_id = session[0].session_id 
+      }
+    
+      const userId = await knex('user').select('id').where('session_id', session_id)
+      console.log(userId[0].id);
+      
   
       await knex('snak').insert({
         id: randomUUID(),
@@ -66,5 +80,34 @@ export async function snakRoute(app: FastifyInstance) {
     }
 
     return reply.status(200).send('excluido com sucesso')
+  })
+
+  app.put('/:id/:snak', async (request, reply) => {
+    const body = request.body
+    const params = request.params
+
+    const schemaBody = z.object({
+      name: z.string(),
+      description: z.string(),
+      diet_notdiet: z.boolean()
+    })
+
+    const schemaParams = z.object({
+      id: z.string().uuid(),
+      snak: z.string().uuid()
+    })
+
+    const {id, snak} = schemaParams.parse(params)
+    const {name, description, diet_notdiet} = schemaBody.parse(body)
+
+    if(id){
+      await knex('snak').update({
+          name, 
+          description, 
+          diet_notdiet
+      }).where('user_id', id).where('id', snak)
+
+      return reply.status(200).send()
+    }
   })
 }
